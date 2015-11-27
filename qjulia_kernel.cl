@@ -63,32 +63,18 @@
 #define EPSILON                     (0.003f)
 #define SHADOWS                     (0)
 
-#define __float3                      float4
-#define make_float3					  (float4) 	
-
-__float3 cross3(__float3 b, __float3 c)
-{
-    return make_float3(mad(b.y, c.z,  -b.z * c.y),
-                       mad(b.z, c.x,  -b.x * c.z),
-                       mad(b.x, c.y,  -b.y * c.x), 0);
-
-}
-
-__float3 normalize3(__float3 v)
-{
-    return v * half_rsqrt(dot(v, v));
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 float4 qmult( float4 q1, float4 q2 )
 {
     float4 r;
-    __float3 t;
+    float3 t;
 
-    __float3 q1yzw = make_float3(q1.y, q1.z, q1.w, 0);
-    __float3 q2yzw = make_float3(q2.y, q2.z, q2.w, 0);
-    __float3 c = cross3( q1yzw, q2yzw );
+    float3 q1yzw = (float3)(q1.y, q1.z, q1.w);
+    float3 q2yzw = (float3)(q2.y, q2.z, q2.w);
+    float3 c = cross( q1yzw, q2yzw );
 
     t = q2yzw * q1.x + q1yzw * q2.x + c;
     r.x = q1.x * q2.x - dot( q1yzw, q2yzw );
@@ -100,9 +86,9 @@ float4 qmult( float4 q1, float4 q2 )
 float4 qsqr( float4 q )
 {
     float4 r;
-    __float3 t;
+    float3 t;
     
-    __float3 qyzw = make_float3(q.y, q.z, q.w, 0);
+    float3 qyzw = (float3)(q.y, q.z, q.w);
 
     t     = 2.0f * q.x * qyzw;
     r.x   = q.x * q.x - dot( qyzw, qyzw );
@@ -113,9 +99,9 @@ float4 qsqr( float4 q )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__float3 
+float3 
 EstimateNormalQJulia(
-    __float3 p,
+    float3 p,
     float4 c,
     int iterations )
 {
@@ -141,7 +127,7 @@ EstimateNormalQJulia(
     float ny = fast_length(gy2) - fast_length(gy1);
     float nz = fast_length(gz2) - fast_length(gz1);
 
-    __float3 normal = normalize3(make_float3( nx, ny, nz, 0 ));
+    float3 normal = fast_normalize((float3)( nx, ny, nz ));
 
     return normal;
 }
@@ -150,8 +136,8 @@ EstimateNormalQJulia(
 
 float4 
 IntersectQJulia(
-    __float3 rO,
-    __float3 rD,
+    float3 rO,
+    float3 rD,
     float4 c,
     float epsilon,
     float escape)
@@ -183,25 +169,25 @@ IntersectQJulia(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__float3
+float3
 Phong(
-    __float3 light,
-    __float3 eye,
-    __float3 pt,
-    __float3 normal,
-    __float3 base)
+    float3 light,
+    float3 eye,
+    float3 pt,
+    float3 normal,
+    float3 base)
 {
     const float SpecularExponent = 10.0f; 
     const float Specularity = 0.45f;
 
-    __float3 light_dir = normalize3( light - pt );
-    __float3 eye_dir = normalize3( eye - pt );
+    float3 light_dir = fast_normalize( light - pt );
+    float3 eye_dir = fast_normalize( eye - pt );
     float NdotL = dot( normal, light_dir );
-    __float3 reflect_dir = light_dir - 2.0f * NdotL * normal;
+    float3 reflect_dir = light_dir - 2.0f * NdotL * normal;
 
     base += fabs(normal) * 0.5f;
-    __float3 diffuse = base * fmax(NdotL, 0.0f);
-    __float3 specular = Specularity * half_powr( fmax( dot(eye_dir, reflect_dir), 0.0f), SpecularExponent );
+    float3 diffuse = base * fmax(NdotL, 0.0f);
+    float3 specular = Specularity * half_powr( fmax( dot(eye_dir, reflect_dir), 0.0f), SpecularExponent );
     return diffuse + specular;
 }
 
@@ -209,8 +195,8 @@ Phong(
 
 float
 IntersectSphere(
-    __float3 rO,
-    __float3 rD,
+    float3 rO,
+    float3 rD,
     float radius )
 {
     float fB = 2.0f * dot( rO, rD );
@@ -230,13 +216,13 @@ IntersectSphere(
 
 float4 
 RaytraceQJulia(
-    __float3 rO,
-    __float3 rD,
+    float3 rO,
+    float3 rD,
     float4 mu,
     float epsilon,
-    __float3 eye,
-    __float3 light,
-    __float3 diffuse,
+    float3 eye,
+    float3 light,
+    float3 diffuse,
     float radius,
     bool shadows,
     int iterations )
@@ -244,7 +230,7 @@ RaytraceQJulia(
     const float4 background = (float4)( 0.15f, 0.15f, 0.15f, 0.0f );
     float4 color = background;
 
-    rD = normalize3( rD );
+    rD = fast_normalize( rD );
     float t = IntersectSphere( rO, rD, radius );
     if ( t <= 0.0f )
         return color;
@@ -256,15 +242,15 @@ RaytraceQJulia(
         return color;
 
     rO.xyz = hit.xyz;
-    __float3 normal = EstimateNormalQJulia( rO, mu, iterations );
+    float3 normal = EstimateNormalQJulia( rO, mu, iterations );
 
-    __float3 rgb = Phong( light, rD, rO, normal, diffuse );
+    float3 rgb = Phong( light, rD, rO, normal, diffuse );
     color.xyz = rgb.xyz;
     color.w = 1.0f;
 
     if (SHADOWS)
     {
-        __float3 light_dir = normalize3( light - rO );
+        float3 light_dir = fast_normalize( light - rO );
         rO += normal * epsilon * 2.0f;
         hit = IntersectQJulia( rO, light_dir, mu, epsilon, ESCAPE_THRESHOLD );
         dist = hit.w;
@@ -296,13 +282,13 @@ QJulia(
     float2 position = (coord.xy - half * size) / scale;
     float2 frame = (position) * zoom;
 
-    __float3 light = make_float3(1.5f, 0.5f, 4.0f, 0.0f);
-    __float3 eye = make_float3(0.0f, 0.0f, 4.0f, 0.0f);
-    __float3 ray = make_float3(frame.x, frame.y, 0.0f, 0.0f);
-    __float3 base = make_float3(diffuse.x, diffuse.y, diffuse.z, 0.0f);    
+    float3 light = (float3)(1.5f, 0.5f, 4.0f);
+    float3 eye = (float3)(0.0f, 0.0f, 4.0f);
+    float3 ray = (float3)(frame.x, frame.y, 0.0f);
+    float3 base = (float3)(diffuse.x, diffuse.y, diffuse.z);    
 
-    __float3 rO = eye;
-    __float3 rD = (ray - rO);
+    float3 rO = eye;
+    float3 rD = (ray - rO);
     
     float4 color = RaytraceQJulia( rO, rD, mu, epsilon, eye, light, base, radius, shadows, iterations);
 
