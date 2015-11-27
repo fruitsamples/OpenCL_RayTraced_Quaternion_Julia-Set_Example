@@ -278,8 +278,8 @@ QJulia(
 
     float2 size = (float2)((float)width, (float)height);
     float scale = max(size.x, size.y);
-    float2 half = (float2)(0.5f, 0.5f);
-    float2 position = (coord.xy - half * size) / scale;
+    float2 h = (float2)(0.5f, 0.5f); // half
+    float2 position = (coord.xy - h * size) / scale;
     float2 frame = (position) * zoom;
 
     float3 light = (float3)(1.5f, 0.5f, 4.0f);
